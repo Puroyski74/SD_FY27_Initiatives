@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Service Desk FY27 Initiatives</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:#07091A; --surface:#0E1530; --surface2:#141D3A;
+  --border:#1F2D55; --border-light:#2A3D6B;
+  --text:#E8ECFF; --text-muted:#8090B8; --lane-bg:#0B1228;
+  --chrome-h: 0px; /* set by JS = header + syncbar + legend total height */
+  --c-people:#7C3AED; --c-delivery:#0EA5E9; --c-day1:#10B981;
+  --c-talent:#F59E0B; --c-client:#EF4444; --c-reinv-del:#EC4899; --c-capability:#F97316;
+}
+
+html,body { height:100%; overflow:hidden; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; display:flex; flex-direction:column; }
+
+/* ── ROOM GATE ── */
+#roomGate {
+  position:fixed; inset:0; z-index:1000;
+  background:rgba(7,9,26,0.97);
+  display:flex; align-items:center; justify-content:center;
+}
+.gate-card {
+  background:var(--surface); border:1px solid var(--border-light);
+  border-radius:16px; padding:40px 36px; width:400px; max-width:92vw;
+  display:flex; flex-direction:column; gap:24px;
+}
+.gate-logo { font-size:1.4rem; font-weight:800; letter-spacing:-0.02em; background:linear-gradient(90deg,#7C9FFF,#B57AFF,#5EEAD4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.gate-title { font-size:1rem; font-weight:700; color:var(--text); }
+.gate-sub   { font-size:0.78rem; color:var(--text-muted); line-height:1.55; margin-top:-16px; }
+.gate-section { display:flex; flex-direction:column; gap:8px; }
+.gate-label { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-muted); }
+.gate-row   { display:flex; gap:8px; }
+.gate-input { flex:1; background:var(--surface2); border:1px solid var(--border-light); border-radius:7px; padding:9px 12px; font-family:'Inter',sans-serif; font-size:0.82rem; color:var(--text); outline:none; transition:border-color .15s; }
+.gate-input:focus { border-color:#4F46E5; }
+.gate-input::placeholder { color:var(--text-muted); opacity:0.6; }
+.gate-btn { padding:9px 18px; border-radius:7px; font-size:0.8rem; font-weight:700; cursor:pointer; border:none; white-space:nowrap; transition:opacity .15s; }
+.gate-btn:hover { opacity:.82; }
+.gate-btn-primary { background:linear-gradient(135deg,#4F46E5,#7C3AED); color:#fff; }
+.gate-btn-new     { background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); flex-shrink:0; }
+.gate-divider { display:flex; align-items:center; gap:10px; color:var(--text-muted); font-size:0.7rem; }
+.gate-divider::before,.gate-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+.gate-error { font-size:0.74rem; color:#FCA5A5; display:none; }
+.gate-error.show { display:block; }
+
+/* ── CHROME (header + syncbar + legend — sticky top) ── */
+#chrome { flex-shrink:0; }
+
+/* ── SYNC BAR ── */
+#syncBar { background:var(--surface2); border-bottom:1px solid var(--border); padding:5px 24px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.sync-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; background:#6B7280; transition:background .3s; }
+.sync-dot.connected { background:#10B981; }
+.sync-dot.syncing   { background:#F59E0B; animation:pulse .7s infinite alternate; }
+.sync-dot.error     { background:#EF4444; }
+@keyframes pulse { from{opacity:1} to{opacity:.4} }
+.sync-label { font-size:0.7rem; font-weight:600; color:var(--text-muted); }
+.sync-room  { font-size:0.7rem; font-weight:700; color:var(--text); font-family:monospace; letter-spacing:0.05em; }
+.sync-users { font-size:0.7rem; color:var(--text-muted); }
+.sync-spacer { flex:1; }
+.presence-avatars { display:flex; align-items:center; }
+.avatar { width:20px; height:20px; border-radius:50%; border:2px solid var(--surface2); display:flex; align-items:center; justify-content:center; font-size:0.55rem; font-weight:800; color:#fff; margin-left:-5px; flex-shrink:0; }
+.avatar:first-child { margin-left:0; }
+.sync-copy  { font-size:0.68rem; font-weight:600; padding:3px 9px; border-radius:5px; background:rgba(255,255,255,0.07); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; transition:background .15s; }
+.sync-copy:hover { background:rgba(255,255,255,0.14); color:var(--text); }
+.sync-leave { font-size:0.68rem; font-weight:600; padding:3px 9px; border-radius:5px; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#FCA5A5; cursor:pointer; transition:background .15s; }
+.sync-leave:hover { background:rgba(239,68,68,.22); }
+
+/* ── HEADER ── */
+header { background:linear-gradient(135deg,#07091A 0%,#0D1435 100%); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.site-title { font-size:1.2rem; font-weight:800; letter-spacing:-0.02em; background:linear-gradient(90deg,#7C9FFF,#B57AFF,#5EEAD4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; white-space:nowrap; }
+.header-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+.btn { padding:6px 14px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer; border:none; transition:opacity .15s; }
+.btn:hover { opacity:.8; }
+.btn-reset  { background:var(--surface2); color:var(--text-muted); border:1px solid var(--border); }
+.btn-export { background:linear-gradient(135deg,#4F46E5,#7C3AED); color:#fff; }
+
+/* ── LEGEND ── */
+.legend { background:var(--surface); border-bottom:1px solid var(--border); padding:8px 24px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+.legend-label { font-size:0.68rem; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-right:2px; }
+.legend-item  { display:flex; align-items:center; gap:6px; font-size:0.74rem; font-weight:500; color:var(--text); white-space:nowrap; }
+.legend-dot   { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+
+/* ── TWO-PANE BODY ── */
+#panes {
+  flex:1; display:flex; overflow:hidden;
+  /* height fills whatever remains after chrome */
+}
+
+/* LEFT PANE — swim lanes, scrollable */
+#lanesPane {
+  flex:1; overflow-y:auto; overflow-x:hidden;
+  padding:16px 16px 16px 20px;
+  border-right:1px solid var(--border);
+}
+#lanesPane::-webkit-scrollbar { width:5px; }
+#lanesPane::-webkit-scrollbar-track { background:transparent; }
+#lanesPane::-webkit-scrollbar-thumb { background:var(--border-light); border-radius:3px; }
+
+/* RIGHT PANE — card pool, scrollable */
+#poolPane {
+  width:310px; flex-shrink:0;
+  overflow-y:auto; overflow-x:hidden;
+  padding:14px 14px 14px 14px;
+  background:var(--surface);
+}
+#poolPane::-webkit-scrollbar { width:5px; }
+#poolPane::-webkit-scrollbar-track { background:transparent; }
+#poolPane::-webkit-scrollbar-thumb { background:var(--border-light); border-radius:3px; }
+
+/* ── SWIM LANES ── */
+.lanes-section { display:flex; flex-direction:column; gap:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.swim-lane { display:flex; flex-direction:column; border-bottom:1px solid var(--border); }
+.swim-lane:last-child { border-bottom:none; }
+.lane-label { background:var(--surface2); border-bottom:1px solid var(--border); padding:7px 14px; display:flex; align-items:center; gap:10px; }
+.lane-label.reinvent { border-left:4px solid #4F46E5; }
+.lane-label.scale    { border-left:4px solid #0EA5E9; }
+.lane-label.power    { border-left:4px solid #10B981; }
+.lane-label.others1  { border-left:4px solid #6B7280; }
+.lane-label.others2  { border-left:4px solid #6B7280; }
+.lane-label-text { font-size:0.8rem; font-weight:700; color:var(--text); letter-spacing:-0.01em; line-height:1; }
+.lane-rows { display:flex; flex-direction:column; gap:0; }
+
+/* Sub-rows: flex-wrap so cards tile naturally, min-height gives drop room */
+.lane-subrow {
+  display:flex; flex-wrap:wrap; gap:10px;
+  align-content:flex-start;
+  padding:12px 14px;
+  min-height:140px;
+  background:var(--lane-bg);
+  position:relative;
+  transition:background .15s;
+}
+.lane-subrow:first-child { border-bottom:1px dashed var(--border); }
+.lane-subrow.sort-over   { background:rgba(79,70,229,.09); }
+
+.sublabel { position:absolute; top:4px; right:8px; font-size:0.58rem; font-weight:600; color:var(--border-light); letter-spacing:0.05em; pointer-events:none; user-select:none; }
+.lane-empty-hint { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--border-light); font-size:0.7rem; font-weight:500; pointer-events:none; user-select:none; white-space:nowrap; }
+
+/* ── POOL (right pane) ── */
+.pool-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.pool-title  { font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.07em; }
+.pool-count  { font-size:0.68rem; font-weight:600; color:var(--text-muted); background:var(--surface2); border:1px solid var(--border); border-radius:20px; padding:2px 8px; }
+.pool-groups { display:flex; flex-direction:column; gap:10px; }
+.pool-group  { background:var(--surface2); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.pool-group-header { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid var(--border); }
+.pool-group-left  { display:flex; align-items:center; gap:6px; }
+.pool-group-dot   { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.pool-group-name  { font-size:0.7rem; font-weight:700; color:var(--text); }
+.pool-group-count { font-size:0.63rem; font-weight:600; color:var(--text-muted); background:rgba(255,255,255,0.07); border-radius:10px; padding:1px 6px; }
+.btn-add-card { font-size:0.65rem; font-weight:700; padding:3px 8px; border-radius:4px; border:1px solid var(--border-light); background:rgba(255,255,255,0.04); color:var(--text-muted); cursor:pointer; transition:background .15s,color .15s; white-space:nowrap; }
+.btn-add-card:hover { background:rgba(255,255,255,0.12); color:var(--text); }
+.pool-cards { display:flex; flex-wrap:wrap; gap:8px; padding:8px 10px; min-height:52px; transition:background .15s; }
+.pool-cards.sort-over { background:rgba(79,70,229,.07); }
+
+/* ── INITIATIVE BOX ── */
+.ibox {
+  width:118px;
+  border-radius:7px; padding:8px 8px 6px;
+  cursor:grab; position:relative;
+  display:flex; flex-direction:column; gap:5px;
+  transition:transform .12s, box-shadow .12s, opacity .15s;
+  user-select:none; border:1px solid transparent;
+}
+.ibox:hover        { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.55); }
+.ibox.dragging     { opacity:0.22; transform:scale(0.92); cursor:grabbing; }
+.ibox.detail-open  { box-shadow:0 0 0 2px rgba(255,255,255,0.22); }
+
+.ibox-header { display:flex; align-items:center; justify-content:space-between; }
+.ibox-dot    { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.ibox-info-btn { width:16px; height:16px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.13); display:flex; align-items:center; justify-content:center; font-size:0.58rem; font-weight:700; color:rgba(255,255,255,0.4); cursor:pointer; flex-shrink:0; transition:background .15s,color .15s; line-height:1; }
+.ibox-info-btn:hover,.ibox-info-btn.active { background:rgba(255,255,255,0.18); color:rgba(255,255,255,0.9); }
+
+.ibox-text { font-size:0.68rem; font-weight:500; line-height:1.45; background:transparent; border:none; color:inherit; width:100%; resize:none; font-family:'Inter',sans-serif; outline:none; cursor:text; padding:0; overflow:hidden; min-height:16px; }
+.ibox-text::placeholder { opacity:0.38; font-style:italic; }
+
+.init-people     { background:rgba(124,58,237,.18);  border-color:rgba(124,58,237,.38);  color:#C4B5FD; }
+.init-delivery   { background:rgba(14,165,233,.18);  border-color:rgba(14,165,233,.38);  color:#7DD3FC; }
+.init-day1       { background:rgba(16,185,129,.18);  border-color:rgba(16,185,129,.38);  color:#6EE7B7; }
+.init-talent     { background:rgba(245,158,11,.18);  border-color:rgba(245,158,11,.38);  color:#FCD34D; }
+.init-client     { background:rgba(239,68,68,.18);   border-color:rgba(239,68,68,.38);   color:#FCA5A5; }
+.init-reinv-del  { background:rgba(236,72,153,.18);  border-color:rgba(236,72,153,.38);  color:#F9A8D4; }
+.init-capability { background:rgba(249,115,22,.18);  border-color:rgba(249,115,22,.38);  color:#FDBA74; }
+
+/* ── DETAIL PANEL ── */
+.detail-panel { position:fixed; z-index:500; width:300px; background:#111B38; border:1px solid var(--border-light); border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.75); overflow:hidden; display:none; flex-direction:column; animation:panelIn .16s ease; }
+.detail-panel.visible { display:flex; }
+@keyframes panelIn { from{opacity:0;transform:translateY(5px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+.detail-header { display:flex; align-items:center; gap:8px; padding:10px 12px 9px; border-bottom:1px solid var(--border); background:#0E1630; }
+.detail-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+.detail-title-input { flex:1; background:transparent; border:none; outline:none; font-family:'Inter',sans-serif; font-size:0.8rem; font-weight:700; color:var(--text); cursor:text; }
+.detail-title-input::placeholder { color:var(--text-muted); font-weight:500; }
+.detail-close { width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,0.07); border:none; color:var(--text-muted); font-size:0.82rem; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background .15s; }
+.detail-close:hover { background:rgba(255,255,255,0.15); color:var(--text); }
+.detail-body { padding:10px 12px; display:flex; flex-direction:column; gap:10px; }
+.detail-field { display:flex; flex-direction:column; gap:3px; }
+.detail-field-label { font-size:0.62rem; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:var(--text-muted); }
+.detail-field-input { background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; padding:7px 9px; font-family:'Inter',sans-serif; font-size:0.72rem; color:var(--text); line-height:1.5; resize:none; outline:none; width:100%; min-height:52px; overflow:hidden; transition:border-color .15s; }
+.detail-field-input:focus { border-color:var(--border-light); background:rgba(255,255,255,0.06); }
+.detail-field-input::placeholder { color:var(--text-muted); opacity:0.6; font-style:italic; }
+
+/* ── DRAG GHOST ── */
+#drag-ghost { position:fixed; pointer-events:none; z-index:9999; opacity:0.88; transform:rotate(2deg) scale(1.04); transition:none; }
+
+/* ── LOADING / TOAST ── */
+#loadingOverlay { position:fixed; inset:0; z-index:900; background:rgba(7,9,26,0.85); display:flex; align-items:center; justify-content:center; gap:12px; font-size:0.84rem; color:var(--text-muted); }
+#loadingOverlay.hidden { display:none; }
+.spinner { width:18px; height:18px; border:2px solid var(--border-light); border-top-color:#7C9FFF; border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
+@keyframes spin { to{transform:rotate(360deg)} }
+.toast { position:fixed; bottom:20px; right:20px; background:#1A2540; border:1px solid var(--border-light); color:var(--text); font-size:0.78rem; font-weight:500; padding:9px 16px; border-radius:8px; z-index:9999; opacity:0; transform:translateY(6px); transition:opacity .25s,transform .25s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ROOM GATE -->
+<div id="roomGate">
+  <div class="gate-card">
+    <div class="gate-logo">Service Desk FY27</div>
+    <div class="gate-title">Join or create a board session</div>
+    <div class="gate-sub">Everyone with the same Room Code sees and edits the same board in real time.</div>
+    <div class="gate-section">
+      <div class="gate-label">Your display name</div>
+      <input class="gate-input" id="gateName" placeholder="e.g. Francis" maxlength="24">
+    </div>
+    <div class="gate-section">
+      <div class="gate-label">Create a new session</div>
+      <div class="gate-row">
+        <button class="gate-btn gate-btn-new" onclick="createRoom()">✦ New Session</button>
+        <span style="font-size:0.7rem;color:var(--text-muted);align-self:center;">generates a unique room code</span>
+      </div>
+    </div>
+    <div class="gate-divider">or join an existing session</div>
+    <div class="gate-section">
+      <div class="gate-label">Room code</div>
+      <div class="gate-row">
+        <input class="gate-input" id="gateCode" placeholder="e.g. DELTA-7492" style="text-transform:uppercase;font-family:monospace;letter-spacing:0.08em;" maxlength="12">
+        <button class="gate-btn gate-btn-primary" onclick="joinRoom()">Join →</button>
+      </div>
+      <div class="gate-error" id="gateError">Room not found. Check the code and try again.</div>
+    </div>
+  </div>
+</div>
+
+<div id="loadingOverlay" class="hidden"><div class="spinner"></div>Connecting…</div>
+
+<!-- CHROME -->
+<div id="chrome">
+  <div id="syncBar" style="display:none">
+    <div class="sync-dot" id="syncDot"></div>
+    <span class="sync-label">Room:</span>
+    <span class="sync-room" id="syncRoomLabel"></span>
+    <span class="sync-users" id="syncUsers"></span>
+    <div class="sync-spacer"></div>
+    <div class="presence-avatars" id="presenceAvatars"></div>
+    <button class="sync-copy"  onclick="copyShareLink()">⎘ Copy invite link</button>
+    <button class="sync-leave" onclick="leaveRoom()">Leave</button>
+  </div>
+  <header>
+    <div class="site-title">Service Desk FY27 Initiatives</div>
+    <div class="header-actions">
+      <button class="btn btn-reset"  onclick="resetAll()">↺ Reset</button>
+      <button class="btn btn-export" onclick="exportState()">↓ Export</button>
+    </div>
+  </header>
+  <div class="legend">
+    <span class="legend-label">Initiatives</span>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-people)"></span>People</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-delivery)"></span>Delivery Maturity</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-day1)"></span>Day 1 Automations</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-talent)"></span>Reinventing Talent</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-client)"></span>Reinventing Client Relationships</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-reinv-del)"></span>Reinventing Delivery</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--c-capability)"></span>Reinventing Capability</div>
+  </div>
+</div>
+
+<!-- TWO PANES -->
+<div id="panes">
+
+  <!-- LEFT: Swim lanes -->
+  <div id="lanesPane">
+    <div class="lanes-section">
+
+      <div class="swim-lane">
+        <div class="lane-label reinvent"><span class="lane-label-text">Reinvent the Core</span></div>
+        <div class="lane-rows">
+          <div class="lane-subrow" id="drop-lane-reinvent-a" data-zone="reinvent-a"><span class="sublabel">Row A</span><span class="lane-empty-hint">Drop cards here</span></div>
+          <div class="lane-subrow" id="drop-lane-reinvent-b" data-zone="reinvent-b"><span class="sublabel">Row B</span><span class="lane-empty-hint">Drop cards here</span></div>
+        </div>
+      </div>
+
+      <div class="swim-lane">
+        <div class="lane-label scale"><span class="lane-label-text">Scale the New</span></div>
+        <div class="lane-rows">
+          <div class="lane-subrow" id="drop-lane-scale-a" data-zone="scale-a"><span class="sublabel">Row A</span><span class="lane-empty-hint">Drop cards here</span></div>
+          <div class="lane-subrow" id="drop-lane-scale-b" data-zone="scale-b"><span class="sublabel">Row B</span><span class="lane-empty-hint">Drop cards here</span></div>
+        </div>
+      </div>
+
+      <div class="swim-lane">
+        <div class="lane-label power"><span class="lane-label-text">Power the Reinventors</span></div>
+        <div class="lane-rows">
+          <div class="lane-subrow" id="drop-lane-power-a" data-zone="power-a"><span class="sublabel">Row A</span><span class="lane-empty-hint">Drop cards here</span></div>
+          <div class="lane-subrow" id="drop-lane-power-b" data-zone="power-b"><span class="sublabel">Row B</span><span class="lane-empty-hint">Drop cards here</span></div>
+        </div>
+      </div>
+
+      <div class="swim-lane">
+        <div class="lane-label others1"><span class="lane-label-text">Others</span></div>
+        <div class="lane-rows">
+          <div class="lane-subrow" id="drop-lane-others1-a" data-zone="others1-a"><span class="sublabel">Row A</span><span class="lane-empty-hint">Drop cards here</span></div>
+          <div class="lane-subrow" id="drop-lane-others1-b" data-zone="others1-b"><span class="sublabel">Row B</span><span class="lane-empty-hint">Drop cards here</span></div>
+        </div>
+      </div>
+
+      <div class="swim-lane">
+        <div class="lane-label others2"><span class="lane-label-text">Others</span></div>
+        <div class="lane-rows">
+          <div class="lane-subrow" id="drop-lane-others2-a" data-zone="others2-a"><span class="sublabel">Row A</span><span class="lane-empty-hint">Drop cards here</span></div>
+          <div class="lane-subrow" id="drop-lane-others2-b" data-zone="others2-b"><span class="sublabel">Row B</span><span class="lane-empty-hint">Drop cards here</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /lanesPane -->
+
+  <!-- RIGHT: Card pool -->
+  <div id="poolPane">
+    <div class="pool-header">
+      <span class="pool-title">Cards</span>
+      <span class="pool-count" id="pool-count">49</span>
+    </div>
+    <div class="pool-groups" id="poolGroups"></div>
+  </div>
+
+</div><!-- /panes -->
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-header">
+    <span class="detail-dot" id="detailDot"></span>
+    <input class="detail-title-input" id="detailTitle" type="text" placeholder="Key Deliverable" spellcheck="false">
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="detail-body">
+    <div class="detail-field">
+      <span class="detail-field-label">Purpose / Objective</span>
+      <textarea class="detail-field-input" id="detailPurpose" placeholder="What is the aim? What problem does it solve?" spellcheck="false"></textarea>
+    </div>
+    <div class="detail-field">
+      <span class="detail-field-label">Key Deliverables</span>
+      <textarea class="detail-field-input" id="detailDeliverables" placeholder="What specific outputs will be produced?" spellcheck="false"></textarea>
+    </div>
+    <div class="detail-field">
+      <span class="detail-field-label">Expected Results</span>
+      <textarea class="detail-field-input" id="detailResults" placeholder="What measurable outcomes are expected?" spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+/* ═══════════════════════════════ FIREBASE CONFIG ═══════════════════════════ */
+const FB_CONFIG = {
+  apiKey:            "AIzaSyD0KYztmzBy71zDIW2MSMTJrYYpvKQUh4g",
+  authDomain:        "service-desk-fy27-initiatives.firebaseapp.com",
+  databaseURL:       "https://service-desk-fy27-initiatives-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "service-desk-fy27-initiatives",
+  storageBucket:     "service-desk-fy27-initiatives.firebasestorage.app",
+  messagingSenderId: "802683891684",
+  appId:             "1:802683891684:web:9283df55da68f89fe621f1",
+  measurementId:     "G-71L3YYK5CR"
+};
+/* Firebase project: service-desk-fy27-initiatives (Spark, asia-southeast1) */
+
+/* ═══════════════════════════════ CONSTANTS ════════════════════════════════ */
+const INITIATIVES = [
+  { id:'people',     cls:'init-people',    color:'#7C3AED', label:'People',                          count:7 },
+  { id:'delivery',   cls:'init-delivery',  color:'#0EA5E9', label:'Delivery Maturity',                count:7 },
+  { id:'day1',       cls:'init-day1',      color:'#10B981', label:'Day 1 Automations',                count:7 },
+  { id:'talent',     cls:'init-talent',    color:'#F59E0B', label:'Reinventing Talent',               count:7 },
+  { id:'client',     cls:'init-client',    color:'#EF4444', label:'Reinventing Client Relationships', count:7 },
+  { id:'reinv-del',  cls:'init-reinv-del', color:'#EC4899', label:'Reinventing Delivery',             count:7 },
+  { id:'capability', cls:'init-capability',color:'#F97316', label:'Reinventing Capability',           count:7 },
+];
+const ALL_ZONES = ['reinvent-a','reinvent-b','scale-a','scale-b','power-a','power-b','others1-a','others1-b','others2-a','others2-b'];
+const AVATAR_COLORS = ['#7C3AED','#0EA5E9','#10B981','#F59E0B','#EF4444','#EC4899','#F97316','#6366F1'];
+
+/* ═══════════════════════════════ STATE ════════════════════════════════════ */
+let boxes=[], uidCounter=0;
+let dragId=null, dragSource=null, ghostEl=null, ghostOffX=0, ghostOffY=0;
+let activeBoxId=null;
+let db=null, roomCode=null, isLocalOnly=true, ignoreNext=false, syncTimer=null, presenceRef=null;
+let myUserId='user-'+Math.random().toString(36).slice(2,8);
+let myName='Anonymous';
+let myColor=AVATAR_COLORS[Math.floor(Math.random()*AVATAR_COLORS.length)];
+
+/* ═══════════════════════════════ ROOM CODE ════════════════════════════════ */
+const WORDS=['ALPHA','BETA','DELTA','ECHO','FOXTROT','GOLF','HOTEL','INDIA','LIMA','MIKE','NOVA','OSCAR','PAPA','SIERRA','TANGO','ZULU'];
+function genCode(){ return WORDS[Math.floor(Math.random()*WORDS.length)]+'-'+Math.floor(1000+Math.random()*9000); }
+
+/* ═══════════════════════════════ GATE ════════════════════════════════════ */
+function getGateName(){ return document.getElementById('gateName').value.trim()||'Anonymous'; }
+function createRoom(){ myName=getGateName(); document.getElementById('gateCode').value=genCode(); joinRoom(undefined,true); }
+
+async function joinRoom(codeOverride,isNew){
+  myName=getGateName();
+  const raw=(codeOverride||document.getElementById('gateCode').value).trim().toUpperCase();
+  const code=raw.replace(/[^A-Z0-9\-]/g,'');
+  if(!code){ showGateError('Enter a room code first.'); return; }
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  document.getElementById('gateError').classList.remove('show');
+
+  try {
+    const app=firebase.initializeApp(FB_CONFIG,'main');
+    db=firebase.database(app);
+    await Promise.race([db.ref('.info/connected').once('value'),new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),5000))]);
+    isLocalOnly=false;
+  } catch(e){ isLocalOnly=true; db=null; }
+
+  roomCode=code;
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  document.getElementById('roomGate').style.display='none';
+  document.getElementById('syncBar').style.display='';
+  document.getElementById('syncRoomLabel').textContent=roomCode;
+  setSyncStatus(isLocalOnly?'error':'syncing');
+
+  if(isLocalOnly){
+    setSyncStatus('error');
+    document.getElementById('syncUsers').textContent='(local-only — Firebase not reachable)';
+    initBoxes(); render(); return;
+  }
+
+  const snap=await db.ref(`rooms/${roomCode}/state`).once('value');
+  if(snap.exists()){ applyRemoteState(snap.val()); }
+  else if(isNew||!codeOverride){ initBoxes(); await pushState(); }
+  else { showGateError('Room not found. Check the code and try again.'); document.getElementById('roomGate').style.display=''; document.getElementById('syncBar').style.display='none'; return; }
+
+  render();
+  subscribeToRoom();
+  joinPresence();
+  setSyncStatus('connected');
+}
+
+function showGateError(msg){ document.getElementById('loadingOverlay').classList.add('hidden'); const el=document.getElementById('gateError'); el.textContent=msg; el.classList.add('show'); }
+
+/* ═══════════════════════════════ FIREBASE ═════════════════════════════════ */
+function serializeState(){ return { uidCounter, boxes:boxes.map(b=>({id:b.id,initiative:b.initiative,cls:b.cls,color:b.color,location:b.location,text:b.text,purpose:b.purpose||'',deliverables:b.deliverables||'',results:b.results||''})) }; }
+
+function applyRemoteState(data){
+  if(!data||!data.boxes) return;
+  uidCounter=data.uidCounter||0;
+  boxes=data.boxes.map(s=>({id:s.id,initiative:s.initiative,cls:s.cls||initCls(s.initiative),color:s.color||initColor(s.initiative),location:s.location||'pool',text:s.text||'',purpose:s.purpose||'',deliverables:s.deliverables||'',results:s.results||''}));
+}
+
+function initCls(id)  { return (INITIATIVES.find(i=>i.id===id)||{cls:'init-people'}).cls; }
+function initColor(id){ return (INITIATIVES.find(i=>i.id===id)||{color:'#7C3AED'}).color; }
+
+async function pushState(){
+  if(isLocalOnly||!db){ saveLocal(); return; }
+  setSyncStatus('syncing');
+  try{ ignoreNext=true; await db.ref(`rooms/${roomCode}/state`).set(serializeState()); setSyncStatus('connected'); }
+  catch(e){ setSyncStatus('error'); ignoreNext=false; }
+  saveLocal();
+}
+function debouncedPush(){ clearTimeout(syncTimer); syncTimer=setTimeout(pushState,600); }
+
+function subscribeToRoom(){
+  if(!db) return;
+  db.ref(`rooms/${roomCode}/state`).on('value',snap=>{ if(ignoreNext){ignoreNext=false;return;} if(!snap.exists())return; applyRemoteState(snap.val()); render(); setSyncStatus('connected'); });
+}
+
+/* ═══════════════════════════════ PRESENCE ═════════════════════════════════ */
+function joinPresence(){
+  if(!db) return;
+  presenceRef=db.ref(`rooms/${roomCode}/presence/${myUserId}`);
+  presenceRef.set({name:myName,color:myColor,ts:Date.now()});
+  presenceRef.onDisconnect().remove();
+  db.ref(`rooms/${roomCode}/presence`).on('value',snap=>{ const u=[]; snap.forEach(c=>u.push(c.val())); renderPresence(u); });
+}
+
+function renderPresence(users){
+  const el=document.getElementById('presenceAvatars'); el.innerHTML='';
+  document.getElementById('syncUsers').textContent=users.length===1?'1 online':`${users.length} online`;
+  users.slice(0,5).forEach(u=>{ const av=document.createElement('div'); av.className='avatar'; av.style.background=u.color||'#4F46E5'; av.title=u.name; av.textContent=(u.name||'?')[0].toUpperCase(); el.appendChild(av); });
+  if(users.length>5){ const m=document.createElement('div'); m.className='avatar'; m.style.background='#374151'; m.textContent=`+${users.length-5}`; el.appendChild(m); }
+}
+
+function setSyncStatus(s){ document.getElementById('syncDot').className='sync-dot '+s; }
+
+/* ═══════════════════════════════ LEAVE / SHARE ════════════════════════════ */
+function leaveRoom(){ if(presenceRef)presenceRef.remove(); if(db){db.ref(`rooms/${roomCode}/state`).off();db.ref(`rooms/${roomCode}/presence`).off();} location.reload(); }
+function copyShareLink(){ const url=location.href.split('?')[0]; navigator.clipboard.writeText(`${url}?room=${roomCode}`).then(()=>showToast('Invite link copied!')); }
+
+/* ═══════════════════════════════ LOCAL FALLBACK ═══════════════════════════ */
+function saveLocal(){ try{ sessionStorage.setItem('sd-fy27-v4',JSON.stringify(serializeState())); }catch(_){} }
+function loadLocal(){ try{ const r=sessionStorage.getItem('sd-fy27-v4'); if(!r)return false; applyRemoteState(JSON.parse(r)); return true; }catch(_){return false;} }
+
+/* ═══════════════════════════════ BOX INIT ═════════════════════════════════ */
+function mkBox(init,extra={}){ return {id:`box-${uidCounter++}`,initiative:init.id,cls:init.cls,color:init.color,text:'',purpose:'',deliverables:'',results:'',location:'pool',...extra}; }
+function initBoxes(){ boxes=[]; uidCounter=0; INITIATIVES.forEach(init=>{ for(let i=0;i<init.count;i++) boxes.push(mkBox(init)); }); }
+
+/* ═══════════════════════════════ RENDER ═══════════════════════════════════ */
+function autoResize(ta){ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; }
+
+function render(){
+  ALL_ZONES.forEach(zoneId=>{
+    const c=document.getElementById(`drop-lane-${zoneId}`); if(!c)return;
+    Array.from(c.querySelectorAll('.ibox')).forEach(n=>n.remove());
+    const zb=boxes.filter(b=>b.location===zoneId);
+    const hint=c.querySelector('.lane-empty-hint'); if(hint) hint.style.display=zb.length===0?'':'none';
+    zb.forEach(b=>c.appendChild(makeBox(b)));
+    attachZoneEvents(c,zoneId);
+  });
+
+  const pg=document.getElementById('poolGroups'); pg.innerHTML='';
+  INITIATIVES.forEach(init=>{
+    const ibs=boxes.filter(b=>b.initiative===init.id&&b.location==='pool');
+    const g=document.createElement('div'); g.className='pool-group';
+    g.innerHTML=`
+      <div class="pool-group-header">
+        <div class="pool-group-left">
+          <span class="pool-group-dot" style="background:${init.color}"></span>
+          <span class="pool-group-name">${init.label}</span>
+          <span class="pool-group-count">${ibs.length}</span>
+        </div>
+        <button class="btn-add-card" onclick="addCard('${init.id}')">+ Add</button>
+      </div>
+      <div class="pool-cards" id="pool-${init.id}" data-zone="pool-${init.id}"></div>`;
+    pg.appendChild(g);
+    const ce=g.querySelector('.pool-cards');
+    ibs.forEach(b=>ce.appendChild(makeBox(b)));
+    attachZoneEvents(ce,`pool-${init.id}`);
+  });
+
+  updatePoolCount();
+}
+
+function makeBox(b){
+  const el=document.createElement('div');
+  el.className=`ibox ${b.cls}`; el.id=b.id; el.draggable=true;
+  el.innerHTML=`
+    <div class="ibox-header">
+      <span class="ibox-dot" style="background:${b.color}"></span>
+      <button class="ibox-info-btn${activeBoxId===b.id?' active':''}" title="Details">⋯</button>
+    </div>
+    <textarea class="ibox-text" placeholder="Key Deliverable" spellcheck="false">${b.text}</textarea>`;
+  const ta=el.querySelector('.ibox-text');
+  autoResize(ta);
+  ta.addEventListener('input',()=>{ const box=boxes.find(x=>x.id===b.id); if(box)box.text=ta.value; autoResize(ta); if(activeBoxId===b.id)document.getElementById('detailTitle').value=ta.value; debouncedPush(); });
+  ta.addEventListener('mousedown',e=>e.stopPropagation());
+  ta.addEventListener('click',e=>e.stopPropagation());
+  const btn=el.querySelector('.ibox-info-btn');
+  btn.addEventListener('mousedown',e=>e.stopPropagation());
+  btn.addEventListener('click',e=>{ e.stopPropagation(); toggleDetail(b.id,el,btn); });
+  el.addEventListener('dragstart',e=>onBoxDragStart(e,b.id));
+  el.addEventListener('dragend',onBoxDragEnd);
+  return el;
+}
+
+function attachZoneEvents(c,zoneId){
+  c.ondragover =e=>{ e.preventDefault(); e.stopPropagation(); c.classList.add('sort-over'); return false; };
+  c.ondrop     =e=>onZoneDrop(e,c,zoneId);
+  c.ondragleave=e=>{ if(!c.contains(e.relatedTarget)) c.classList.remove('sort-over'); };
+}
+
+function updatePoolCount(){ const n=boxes.filter(b=>b.location==='pool').length; document.getElementById('pool-count').textContent=n; }
+
+/* ═══════════════════════════════ ADD CARD ═════════════════════════════════ */
+function addCard(iid){ const init=INITIATIVES.find(i=>i.id===iid); if(!init)return; boxes.push(mkBox(init,{location:'pool'})); render(); debouncedPush(); showToast(`New ${init.label} card added.`); }
+
+/* ═══════════════════════════════ DRAG ════════════════════════════════════ */
+function onBoxDragStart(e,id){
+  closeDetail(); dragId=id;
+  const box=boxes.find(b=>b.id===id); dragSource=box.location;
+  const srcEl=document.getElementById(id); srcEl.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move'; e.dataTransfer.setDragImage(new Image(),0,0);
+  ghostEl=srcEl.cloneNode(true); ghostEl.id='drag-ghost'; ghostEl.style.width=srcEl.offsetWidth+'px'; ghostEl.style.pointerEvents='none';
+  document.body.appendChild(ghostEl);
+  const r=srcEl.getBoundingClientRect(); ghostOffX=e.clientX-r.left; ghostOffY=e.clientY-r.top;
+  positionGhost(e); document.addEventListener('dragover',trackGhost);
+}
+function trackGhost(e){ positionGhost(e); }
+function positionGhost(e){ if(!ghostEl)return; ghostEl.style.left=(e.clientX-ghostOffX)+'px'; ghostEl.style.top=(e.clientY-ghostOffY)+'px'; }
+function onBoxDragEnd(){ if(ghostEl){ghostEl.remove();ghostEl=null;} document.removeEventListener('dragover',trackGhost); const s=document.getElementById(dragId); if(s)s.classList.remove('dragging'); document.querySelectorAll('.sort-over').forEach(el=>el.classList.remove('sort-over')); dragId=null; dragSource=null; }
+
+function getInsertIndex(c,cx,cy){
+  const cards=Array.from(c.querySelectorAll('.ibox:not(.dragging)')); if(!cards.length)return 0;
+  for(let i=0;i<cards.length;i++){ const r=cards[i].getBoundingClientRect(); const mx=r.left+r.width/2,my=r.top+r.height/2; if(cy<my-r.height*.35||(Math.abs(cy-my)<r.height*.65&&cx<mx))return i; }
+  return cards.length;
+}
+
+function zoneToLocation(zoneId){ return zoneId.startsWith('pool-')?'pool':zoneId; }
+
+function onZoneDrop(e,c,zoneId){
+  e.preventDefault(); e.stopPropagation(); c.classList.remove('sort-over'); if(!dragId)return;
+  const tl=zoneToLocation(zoneId); const dragBox=boxes.find(b=>b.id===dragId); if(!dragBox)return;
+  boxes.splice(boxes.indexOf(dragBox),1);
+  const siblings=boxes.filter(b=>b.location===tl);
+  const ip=getInsertIndex(c,e.clientX,e.clientY);
+  dragBox.location=tl;
+  if(ip>=siblings.length) boxes.push(dragBox);
+  else boxes.splice(boxes.indexOf(siblings[ip]),0,dragBox);
+  render(); debouncedPush();
+}
+
+/* ═══════════════════════════════ DETAIL PANEL ═════════════════════════════ */
+function toggleDetail(bid,bel,btn){ if(activeBoxId===bid){closeDetail();return;} openDetail(bid,bel,btn); }
+
+function openDetail(bid,bel,btn){
+  if(activeBoxId){ document.querySelector(`#${activeBoxId} .ibox-info-btn`)?.classList.remove('active'); document.getElementById(activeBoxId)?.classList.remove('detail-open'); }
+  activeBoxId=bid; btn.classList.add('active'); bel.classList.add('detail-open');
+  const box=boxes.find(b=>b.id===bid); const panel=document.getElementById('detailPanel');
+  document.getElementById('detailDot').style.background=box.color;
+  document.getElementById('detailTitle').value=box.text;
+  document.getElementById('detailPurpose').value=box.purpose||'';
+  document.getElementById('detailDeliverables').value=box.deliverables||'';
+  document.getElementById('detailResults').value=box.results||'';
+  ['detailPurpose','detailDeliverables','detailResults'].forEach(id=>autoResize(document.getElementById(id)));
+  positionPanel(bel,panel); panel.classList.add('visible');
+  [{el:document.getElementById('detailTitle'),key:'text'},{el:document.getElementById('detailPurpose'),key:'purpose'},{el:document.getElementById('detailDeliverables'),key:'deliverables'},{el:document.getElementById('detailResults'),key:'results'}]
+  .forEach(({el,key})=>{ el.oninput=()=>{ box[key]=el.value; autoResize(el); if(key==='text'){const ta=document.querySelector(`#${bid} .ibox-text`);if(ta){ta.value=el.value;autoResize(ta);}} debouncedPush(); }; });
+}
+
+function positionPanel(bel,panel){
+  const r=bel.getBoundingClientRect(),pw=300,ph=340,vw=window.innerWidth,vh=window.innerHeight;
+  let left=r.right+10,top=r.top;
+  if(left+pw>vw-10) left=r.left-pw-10;
+  if(left<10) left=10;
+  if(top+ph>vh-10) top=vh-ph-10;
+  if(top<60) top=60;
+  panel.style.left=left+'px'; panel.style.top=top+'px';
+}
+
+function closeDetail(){
+  if(activeBoxId){ document.querySelector(`#${activeBoxId} .ibox-info-btn`)?.classList.remove('active'); document.getElementById(activeBoxId)?.classList.remove('detail-open'); }
+  activeBoxId=null; document.getElementById('detailPanel').classList.remove('visible');
+}
+
+document.addEventListener('click',e=>{ if(!document.getElementById('detailPanel').contains(e.target)&&!e.target.closest('.ibox-info-btn'))closeDetail(); });
+
+/* ═══════════════════════════════ ACTIONS ══════════════════════════════════ */
+function resetAll(){
+  if(!confirm('Reset all cards to the pool? This clears the board for everyone in this session.'))return;
+  closeDetail(); initBoxes(); pushState(); render(); showToast('Board reset for all participants.');
+}
+
+function exportState(){
+  const LN={'reinvent-a':'Reinvent the Core — Row A','reinvent-b':'Reinvent the Core — Row B','scale-a':'Scale the New — Row A','scale-b':'Scale the New — Row B','power-a':'Power the Reinventors — Row A','power-b':'Power the Reinventors — Row B','others1-a':'Others (1) — Row A','others1-b':'Others (1) — Row B','others2-a':'Others (2) — Row A','others2-b':'Others (2) — Row B',pool:'Card Pool'};
+  const IN={people:'People',delivery:'Delivery Maturity',day1:'Day 1 Automations',talent:'Reinventing Talent',client:'Reinventing Client Relationships','reinv-del':'Reinventing Delivery',capability:'Reinventing Capability'};
+  const bk={}; boxes.forEach(b=>{ const l=ALL_ZONES.includes(b.location)?b.location:'pool'; if(!bk[l])bk[l]=[]; bk[l].push(b); });
+  let out=`SERVICE DESK FY27 INITIATIVES — BOARD EXPORT\nRoom: ${roomCode||'local'}\n${'='.repeat(54)}\n\n`;
+  [...ALL_ZONES,'pool'].forEach(k=>{ if(!bk[k]||!bk[k].length)return; out+=`${(LN[k]||k).toUpperCase()}\n${'─'.repeat(42)}\n`; bk[k].forEach(b=>{ out+=`  ● [${IN[b.initiative]}] ${b.text||'(untitled)'}\n`; if(b.purpose)out+=`      Purpose: ${b.purpose}\n`; if(b.deliverables)out+=`      Deliverables: ${b.deliverables}\n`; if(b.results)out+=`      Expected Results: ${b.results}\n`; }); out+='\n'; });
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([out],{type:'text/plain'})); a.download='SD-FY27-board-export.txt'; a.click();
+  showToast('Board exported.');
+}
+
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+/* ═══════════════════════════════ BOOT ═════════════════════════════════════ */
+(function boot(){
+  const p=new URLSearchParams(location.search); const rp=p.get('room');
+  if(rp) document.getElementById('gateCode').value=rp;
+})();
+</script>
+</body>
+</html>
